@@ -87,7 +87,7 @@ func (pipeline *memdPipeline) ExecuteRequest(req *memdQRequest, deadline time.Ti
 	case <-signal:
 		return
 	case <-time.After(deadline.Sub(time.Now())):
-		if (!req.Cancel()) {
+		if !req.Cancel() {
 			<-signal
 		}
 		return nil, &timeoutError{}
@@ -112,7 +112,7 @@ func (pipeline *memdPipeline) dispatchRequest(req *memdQRequest) error {
 
 	err := pipeline.conn.WritePacket(&req.memdRequest)
 	if err != nil {
-		logDebugf("Got write error")
+		logDebugf("Got write error: %+v", err)
 		pipeline.mapLock.Lock()
 		pipeline.opList.Remove(req)
 		pipeline.mapLock.Unlock()
