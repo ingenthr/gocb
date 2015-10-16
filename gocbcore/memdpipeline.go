@@ -27,6 +27,10 @@ type memdPipeline struct {
 
 	handleBadRoute BadRouteHandler
 	handleDeath    CloseHandler
+
+	// Stats stuff
+	packetsWritten int
+	packetsRead int
 }
 
 func CreateMemdPipeline(address string) *memdPipeline {
@@ -175,6 +179,8 @@ func (pipeline *memdPipeline) ioLoop() {
 				break
 			}
 
+			pipeline.packetsRead++
+
 			logDebugf("Got response to resolve.")
 			pipeline.resolveRequest(resp)
 		}
@@ -197,6 +203,8 @@ func (pipeline *memdPipeline) ioLoop() {
 
 				return
 			}
+
+			pipeline.packetsWritten++
 		case <-killSig:
 			return
 		}
