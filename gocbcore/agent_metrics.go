@@ -1,27 +1,48 @@
 package gocbcore
 
+import (
+	"encoding/json"
+	"expvar"
+	"fmt"
+)
+
 type PipelineState int
+
 const (
 	PipelineStateActive = PipelineState(1)
 	PipelineStateClosed = PipelineState(1)
 )
 
-type PipelineMetrics struct
-{
-	Name string
-	QueueSize int
-	State PipelineState
-	PacketsWritten int
-	PacketsRead int
+var (
+	goCbMetrics *expvar.Map
+)
+
+func init() {
+	goCbMetrics = expvar.NewMap("gocb")
 }
 
-type AgentMetrics struct
-{
+type PipelineMetrics struct {
+	Name           string
+	QueueSize      int
+	State          PipelineState
+	PacketsWritten int
+	PacketsRead    int
+}
+
+type AgentMetrics struct {
 	WaitQueueSize int
 	DeadQueueSize int
 
-	ActiveServers []*PipelineMetrics
+	ActiveServers  []*PipelineMetrics
 	PendingServers []*PipelineMetrics
+}
+
+func (a AgentMetrics) String() string {
+	bytes, err := json.Marshal(a)
+	if err != nil {
+		return fmt.Sprintf("Error: %v", err)
+	}
+	return string(bytes)
 }
 
 func pipelineMetrics(pipeline *memdPipeline) *PipelineMetrics {
@@ -72,6 +93,8 @@ func (agent *Agent) PollMetrics() *AgentMetrics {
 			}
 		}
 	}
+
+	goCbMetrics.Set("AgentMetrics", metrics)
 
 	return metrics
 }

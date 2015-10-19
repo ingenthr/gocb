@@ -3,9 +3,10 @@ package gocb
 import (
 	"crypto/tls"
 	"fmt"
-	"github.com/couchbase/gocb/gocbcore"
 	"net/http"
 	"time"
+
+	"github.com/couchbase/gocb/gocbcore"
 )
 
 type Cluster struct {
@@ -115,7 +116,15 @@ func (c *Cluster) makeAgentConfig(bucket, password string) *gocbcore.AgentConfig
 
 func (c *Cluster) OpenBucket(bucket, password string) (*Bucket, error) {
 	agentConfig := c.makeAgentConfig(bucket, password)
-	return createBucket(agentConfig)
+	bucketInstance, err := createBucket(agentConfig)
+	go func() {
+		for {
+			agent := bucketInstance.IoRouter()
+			agent.PollMetrics() // <-- causes expvar to be updated
+			<-time.After(time.Second * 1)
+		}
+	}()
+	return bucketInstance, err
 }
 
 func (c *Cluster) Manager(username, password string) *ClusterManager {
