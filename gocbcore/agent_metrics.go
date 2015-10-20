@@ -94,7 +94,8 @@ func (agent *Agent) PollMetrics() *AgentMetrics {
 		}
 	}
 
-	goCbMetrics.Set("AgentMetrics", metrics)
+	expvarKeyName := fmt.Sprintf("AgentMetrics-%p", agent)
+	goCbMetrics.Set(expvarKeyName, metrics)
 
 	return metrics
 }
