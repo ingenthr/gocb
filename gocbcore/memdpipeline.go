@@ -4,6 +4,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"fmt"
+        "expvar"
+	"log"
 )
 
 type memdInitFunc func(*memdPipeline, time.Time) error
@@ -33,12 +36,27 @@ type memdPipeline struct {
 	packetsRead int
 }
 
+var (
+expvarStringReader *expvar.Int
+expvarStringWriter *expvar.Int
+)
+
 func CreateMemdPipeline(address string) *memdPipeline {
-	return &memdPipeline{
+	pipeline := &memdPipeline{
 		address:  address,
 		queue:    createMemdQueue(),
 		ioDoneCh: make(chan bool, 1),
 	}
+
+
+expvarKeyNameReader := fmt.Sprintf("PipelineReader-%p-%p-%v", pipeline, pipeline.queue, address)
+   expvarStringReader = expvar.NewInt(expvarKeyNameReader)
+			expvarKeyNameWriter := fmt.Sprintf("PipelineWriter-%p-%p-%v", pipeline, pipeline.queue, address)
+        expvarStringWriter = expvar.NewInt(expvarKeyNameWriter)
+
+	return pipeline
+
+
 }
 
 func (s *memdPipeline) Address() string {
@@ -164,6 +182,8 @@ func (s *memdPipeline) resolveRequest(resp *memdResponse) {
 	}
 }
 
+
+
 func (pipeline *memdPipeline) ioLoop() {
 	killSig := make(chan bool)
 
@@ -171,10 +191,12 @@ func (pipeline *memdPipeline) ioLoop() {
 	go func() {
 		logDebugf("Reader loop starting...")
 		for {
+		        
 			resp := &memdResponse{}
 			err := pipeline.conn.ReadPacket(resp)
 			if err != nil {
 				logDebugf("Server read error: %v", err)
+				log.Printf("Server read error: %v", err)
 				killSig <- true
 				break
 			}
@@ -183,6 +205,12 @@ func (pipeline *memdPipeline) ioLoop() {
 
 			logDebugf("Got response to resolve.")
 			pipeline.resolveRequest(resp)
+
+
+			// expvarStringReader.Add(1)
+		        
+
+
 		}
 	}()
 
@@ -194,12 +222,15 @@ func (pipeline *memdPipeline) ioLoop() {
 			logDebugf("Got a request to dispatch.")
 			err := pipeline.dispatchRequest(req)
 			if err != nil {
+				log.Printf("%p Writer loop err: %v", pipeline, err)	
 				// We can assume that the server is not fully drained yet, as the drainer blocks
 				//   waiting for the IO goroutines to finish first.
 				pipeline.queue.reqsCh <- req
 
 				// We must wait for the receive goroutine to die as well before we can continue.
+				log.Printf("%p Writer loop waiting for killSig", pipeline)
 				<-killSig
+				log.Printf("%p Writer loop got killSig", pipeline)
 
 				return
 			}
@@ -208,6 +239,10 @@ func (pipeline *memdPipeline) ioLoop() {
 		case <-killSig:
 			return
 		}
+
+			// expvarStringWriter.Add(1)
+
+
 	}
 }
 

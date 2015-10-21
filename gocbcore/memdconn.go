@@ -111,6 +111,9 @@ func (s *memdConn) WritePacket(req *memdRequest) error {
 	copy(buffer[24+extLen:], req.Key)
 	copy(buffer[24+extLen+keyLen:], req.Value)
 
+	tcpConn := s.conn.(*net.TCPConn)
+        tcpConn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+
 	_, err := s.conn.Write(buffer)
 	return err
 }
@@ -135,6 +138,10 @@ func (s *memdConn) readBuffered(n int) ([]byte, error) {
 			s.recvBuf = s.recvBuf[n:]
 			return buf, nil
 		}
+
+			// tcpConn := s.conn.(*net.TCPConn)
+        		// tcpConn.SetReadDeadline(time.Now().Add(5 * time.Second))
+
 
 		// Read data up to the capacity
 		recvTgt := s.recvBuf[len(s.recvBuf):cap(s.recvBuf)]
