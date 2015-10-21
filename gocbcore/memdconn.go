@@ -139,8 +139,12 @@ func (s *memdConn) readBuffered(n int) ([]byte, error) {
 			return buf, nil
 		}
 
+		tcpConn := s.conn.(*net.TCPConn)
+		tcpConn.SetReadDeadline(time.Now().Add(5 * time.Second))
+
 		// Read data up to the capacity
 		recvTgt := s.recvBuf[len(s.recvBuf):cap(s.recvBuf)]
+
 		n, err := s.conn.Read(recvTgt)
 		if n <= 0 {
 			return nil, err
