@@ -1,13 +1,12 @@
 package gocbcore
 
 import (
+	"expvar"
+	"log"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
-	"fmt"
-        "expvar"
-	"log"
 )
 
 type memdInitFunc func(*memdPipeline, time.Time) error
@@ -38,8 +37,8 @@ type memdPipeline struct {
 }
 
 var (
-expvarStringReader *expvar.Int
-expvarStringWriter *expvar.Int
+	expvarStringReader *expvar.Int
+	expvarStringWriter *expvar.Int
 )
 
 func CreateMemdPipeline(address string) *memdPipeline {
@@ -49,14 +48,7 @@ func CreateMemdPipeline(address string) *memdPipeline {
 		ioDoneCh: make(chan bool, 1),
 	}
 
-
-expvarKeyNameReader := fmt.Sprintf("PipelineReader-%p-%p-%v", pipeline, pipeline.queue, address)
-   expvarStringReader = expvar.NewInt(expvarKeyNameReader)
-			expvarKeyNameWriter := fmt.Sprintf("PipelineWriter-%p-%p-%v", pipeline, pipeline.queue, address)
-        expvarStringWriter = expvar.NewInt(expvarKeyNameWriter)
-
 	return pipeline
-
 
 }
 
@@ -183,8 +175,6 @@ func (s *memdPipeline) resolveRequest(resp *memdResponse) {
 	}
 }
 
-
-
 func (pipeline *memdPipeline) ioLoop() {
 	killSig := make(chan bool)
 
@@ -192,7 +182,7 @@ func (pipeline *memdPipeline) ioLoop() {
 	go func() {
 		logDebugf("Reader loop starting...")
 		for {
-		        
+
 			resp := &memdResponse{}
 			err := pipeline.conn.ReadPacket(resp)
 			if err != nil {
@@ -207,11 +197,6 @@ func (pipeline *memdPipeline) ioLoop() {
 			logDebugf("Got response to resolve.")
 			pipeline.resolveRequest(resp)
 
-
-			// expvarStringReader.Add(1)
-		        
-
-
 		}
 	}()
 
@@ -223,7 +208,7 @@ func (pipeline *memdPipeline) ioLoop() {
 			logDebugf("Got a request to dispatch.")
 			err := pipeline.dispatchRequest(req)
 			if err != nil {
-				log.Printf("%p Writer loop err: %v", pipeline, err)	
+				log.Printf("%p Writer loop err: %v", pipeline, err)
 				// We can assume that the server is not fully drained yet, as the drainer blocks
 				//   waiting for the IO goroutines to finish first.
 				pipeline.queue.reqsCh <- req
@@ -240,9 +225,6 @@ func (pipeline *memdPipeline) ioLoop() {
 		case <-killSig:
 			return
 		}
-
-			// expvarStringWriter.Add(1)
-
 
 	}
 }
