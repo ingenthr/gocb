@@ -32,8 +32,14 @@ type memdPipeline struct {
 	handleDeath    CloseHandler
 
 	// Stats stuff
-	packetsWritten int64
-	packetsRead    int64
+	packetsWritten         int64
+	packetsRead            int64
+	packetWriteAttempts    int64
+	packetWriteErrors      int64
+	packetWriteWaitKillSig int64
+	packetWriteGotKillSig  int64
+	packetReadAttempts     int64
+	packetReadErrors       int64
 }
 
 var (
@@ -184,8 +190,10 @@ func (pipeline *memdPipeline) ioLoop() {
 		for {
 
 			resp := &memdResponse{}
+			atomic.AddInt64(&pipeline.packetReadAttempts, 1)
 			err := pipeline.conn.ReadPacket(resp)
 			if err != nil {
+				atomic.AddInt64(&pipeline.packetReadErrors, 1)
 				logDebugf("Server read error: %v", err)
 				log.Printf("Server read error: %v", err)
 				killSig <- true
@@ -205,9 +213,11 @@ func (pipeline *memdPipeline) ioLoop() {
 	for {
 		select {
 		case req := <-pipeline.queue.reqsCh:
+			atomic.AddInt64(&pipeline.packetWriteAttempts, 1)
 			logDebugf("Got a request to dispatch.")
 			err := pipeline.dispatchRequest(req)
 			if err != nil {
+				atomic.AddInt64(&pipeline.packetWriteErrors, 1)
 				log.Printf("%p Writer loop err: %v", pipeline, err)
 				// We can assume that the server is not fully drained yet, as the drainer blocks
 				//   waiting for the IO goroutines to finish first.
@@ -215,7 +225,9 @@ func (pipeline *memdPipeline) ioLoop() {
 
 				// We must wait for the receive goroutine to die as well before we can continue.
 				log.Printf("%p Writer loop waiting for killSig", pipeline)
+				atomic.AddInt64(&pipeline.packetWriteWaitKillSig, 1)
 				<-killSig
+				atomic.AddInt64(&pipeline.packetWriteGotKillSig, 1)
 				log.Printf("%p Writer loop got killSig", pipeline)
 
 				return

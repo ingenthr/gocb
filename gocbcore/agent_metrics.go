@@ -22,11 +22,17 @@ func init() {
 }
 
 type PipelineMetrics struct {
-	Name           string
-	QueueSize      int
-	State          PipelineState
-	PacketsWritten int64
-	PacketsRead    int64
+	Name                   string
+	QueueSize              int
+	State                  PipelineState
+	PacketsWritten         int64
+	PacketsRead            int64
+	PacketWriteAttempts    int64
+	PacketWriteErrors      int64
+	PacketWriteWaitKillSig int64
+	PacketWriteGotKillSig  int64
+	PacketReadAttempts     int64
+	PacketReadErrors       int64
 }
 
 type AgentMetrics struct {
@@ -52,6 +58,12 @@ func pipelineMetrics(pipeline *memdPipeline) *PipelineMetrics {
 	metrics.QueueSize = len(pipeline.queue.reqsCh)
 	metrics.PacketsWritten = pipeline.packetsWritten
 	metrics.PacketsRead = pipeline.packetsRead
+	metrics.PacketWriteAttempts = pipeline.packetWriteAttempts
+	metrics.PacketWriteErrors = pipeline.packetWriteErrors
+	metrics.PacketWriteWaitKillSig = pipeline.packetWriteWaitKillSig
+	metrics.PacketWriteGotKillSig = pipeline.packetWriteGotKillSig
+	metrics.PacketReadAttempts = pipeline.packetReadAttempts
+	metrics.PacketReadErrors = pipeline.packetReadErrors
 
 	if pipeline.isClosed {
 		metrics.State = PipelineStateClosed
