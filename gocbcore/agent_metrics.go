@@ -25,8 +25,8 @@ type PipelineMetrics struct {
 	Name           string
 	QueueSize      int
 	State          PipelineState
-	PacketsWritten int
-	PacketsRead    int
+	PacketsWritten int64
+	PacketsRead    int64
 }
 
 type AgentMetrics struct {

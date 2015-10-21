@@ -3,6 +3,7 @@ package gocbcore
 import (
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 	"fmt"
         "expvar"
@@ -26,14 +27,14 @@ type memdPipeline struct {
 	isClosed bool
 	ioDoneCh chan bool
 
-	opList  memdOpMap
+	opList memdOpMap
 
 	handleBadRoute BadRouteHandler
 	handleDeath    CloseHandler
 
 	// Stats stuff
-	packetsWritten int
-	packetsRead int
+	packetsWritten int64
+	packetsRead    int64
 }
 
 var (
@@ -201,7 +202,7 @@ func (pipeline *memdPipeline) ioLoop() {
 				break
 			}
 
-			pipeline.packetsRead++
+			atomic.AddInt64(&pipeline.packetsRead, 1)
 
 			logDebugf("Got response to resolve.")
 			pipeline.resolveRequest(resp)
@@ -235,7 +236,7 @@ func (pipeline *memdPipeline) ioLoop() {
 				return
 			}
 
-			pipeline.packetsWritten++
+			atomic.AddInt64(&pipeline.packetsWritten, 1)
 		case <-killSig:
 			return
 		}
